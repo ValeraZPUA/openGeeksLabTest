@@ -1,7 +1,8 @@
 <resources>
     <string name="app_name">OpenGeeksLabTest</string>
-
     <string name="current_region">Selected region: %S</string>
+
+    <!--error toasts-->
     <string name="error_something_went_wrong">Something went wrong…</string>
     <string name="error_no_alive_urls">No alive urls…</string>
 

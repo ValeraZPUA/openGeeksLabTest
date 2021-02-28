@@ -66,6 +66,7 @@ class MainActivity : MvpAppCompatActivity(), MainView, AdapterView.OnItemSelecte
 
     override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
         showLoader()
+        presenter.cancelFindAliveUrlRequest()
         binding.region = spinnerRegion.getItemAtPosition(position).toString()
         presenter.findAliveUrl(
             when (spinnerRegion.selectedItem.toString().toLowerCase(Locale.getDefault())) {
@@ -83,14 +84,20 @@ class MainActivity : MvpAppCompatActivity(), MainView, AdapterView.OnItemSelecte
     }
 
     override fun hideLoader() {
-        loader.dismiss()
+        if (supportFragmentManager.findFragmentByTag(Constants.TAG_DIALOG_LOADER) != null) {
+            loader.dismiss()
+        }
     }
 
     override fun showNoAliveUrlsFoundToast() {
-        Toast.makeText(this, getString(R.string.error_no_alive_urls), Toast.LENGTH_LONG).show()
+        showToast(getString(R.string.error_no_alive_urls))
     }
 
     override fun showErrorToast() {
-        Toast.makeText(this, getString(R.string.error_something_went_wrong), Toast.LENGTH_LONG).show()
+        showToast(getString(R.string.error_something_went_wrong))
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 }

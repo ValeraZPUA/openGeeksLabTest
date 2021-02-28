@@ -1,6 +1,5 @@
 package com.example.opengeekslabtest.ui.activity
 
-import android.util.Log
 import com.arellomobile.mvp.InjectViewState
 import com.arellomobile.mvp.MvpPresenter
 import com.example.opengeekslabtest.App
@@ -13,7 +12,6 @@ import me.jessyan.retrofiturlmanager.RetrofitUrlManager
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.Retrofit
 import javax.inject.Inject
 
 @InjectViewState
@@ -23,44 +21,54 @@ class MainPresenter : MvpPresenter<MainView>() {
     lateinit var requests: Requests
 
     @Inject
-    lateinit var retrofit: Retrofit
-
-    @Inject
     lateinit var checkedResponsesStore: CheckedResponsesStore
+
+    private lateinit var aliveUrlCall: Call<LinkCheckedResponse>
+    private val callbackList = arrayListOf<Call<LinkCheckedResponse>>()
 
     init {
         App.appComponent.inject(this)
     }
 
-    val TAG = "tag22"
-
     fun findAliveUrl(urlsArray: Array<String>) {
         checkedResponsesStore.setUrlsToCheckQuantity(urlsArray.size)
+        checkedResponsesStore.addInitialUrlsToLinkList(urlsArray)
 
-        for(element in urlsArray) {
-            requests
-                .checkUrl(element)
-                .enqueue(object : Callback<LinkCheckedResponse> {
-                    override fun onResponse(call: Call<LinkCheckedResponse>, response: Response<LinkCheckedResponse>) {
-                        if (response.isSuccessful) {
-                            addCheckedResponse(response.body()!!)
-                        } else {
+        for (element in urlsArray) {
+            checkedResponsesStore
+            aliveUrlCall = requests
+                .checkUrl(element).apply {
+                    callbackList.add(this)
+                    enqueue(object : Callback<LinkCheckedResponse> {
+                        override fun onResponse(call: Call<LinkCheckedResponse>, response: Response<LinkCheckedResponse>) {
+                            if (response.isSuccessful) {
+                                addCheckedResponse(response.body()!!)
+                            } else {
+                                addCheckedResponse(LinkCheckedResponse())
+                            }
+                        }
+
+                        override fun onFailure(call: Call<LinkCheckedResponse>, t: Throwable) {
                             addCheckedResponse(LinkCheckedResponse())
                         }
-                    }
-
-                    override fun onFailure(call: Call<LinkCheckedResponse>, t: Throwable) {
-                        Log.e(TAG, "onFailure, findAliveUrl: ${t.message}")
-                        addCheckedResponse(LinkCheckedResponse())
-                    }
-                })
+                    })
+                }
         }
+    }
+
+    fun cancelFindAliveUrlRequest() {
+        callbackList.forEach {
+            it.cancel()
+        }
+        callbackList.clear()
+        checkedResponsesStore.clearStore()
     }
 
     private fun addCheckedResponse(linkCheckedResponse: LinkCheckedResponse) {
         checkedResponsesStore.addCheckedResponse(linkCheckedResponse)
 
         if (checkedResponsesStore.getUrlsToCheckQuantity() == checkedResponsesStore.getResponseListSize()) {
+
             val fastestUrl = checkedResponsesStore.getFastestUrl()
             if (fastestUrl != Constants.ALL_URLS_ARE_DEAD) {
                 RetrofitUrlManager.getInstance().putDomain(Constants.KEY_BASE_URL, fastestUrl)
@@ -68,11 +76,16 @@ class MainPresenter : MvpPresenter<MainView>() {
             } else {
                 viewState.showNoAliveUrlsFoundToast()
             }
-            checkedResponsesStore.clearStore()
+
+            if (!checkedResponsesStore.isNeighboringServerUrlsChecked()) {
+                findAliveUrl(checkedResponsesStore.getNeighboringServerUrls().toTypedArray())
+                checkedResponsesStore.clearResponsesList()
+            } else {
+                checkedResponsesStore.clearStore()
+            }
             viewState.hideLoader()
         }
     }
-
 
     private fun sayHello() {
         requests

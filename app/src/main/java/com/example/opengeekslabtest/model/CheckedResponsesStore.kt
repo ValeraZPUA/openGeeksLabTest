@@ -1,15 +1,15 @@
 package com.example.opengeekslabtest.model
 
-import android.util.Log
 import com.example.opengeekslabtest.Constants
 import com.example.opengeekslabtest.network.responses.LinkCheckedResponse
 import javax.inject.Inject
 
 class CheckedResponsesStore @Inject constructor() {
 
-    //private var isFirstAliveUrlFound = false
     private var urlsToCheckQuantity = 0
-    private var responsesList: ArrayList<LinkCheckedResponse> = arrayListOf()
+    private var initialResponsesList: ArrayList<LinkCheckedResponse> = arrayListOf()
+    private var neighboringServerUrls: ArrayList<Link> = arrayListOf()
+    private var isNeighboringServerUrlsChecked = false
 
     fun setUrlsToCheckQuantity(currentQuantity: Int) {
         urlsToCheckQuantity = currentQuantity
@@ -19,41 +19,62 @@ class CheckedResponsesStore @Inject constructor() {
         return urlsToCheckQuantity
     }
 
-    /*fun setIsFirstAliveUrlFoundTrue() {
-        isFirstAliveUrlFound = true
+    fun addCheckedResponse(checkedResponse: LinkCheckedResponse) {
+        initialResponsesList.add(checkedResponse)
+        addNeighboringServerLinksToLinkList(checkedResponse.refs)
     }
 
-    fun getIsFirstAliveUrlFoundTrue(): Boolean {
-        return isFirstAliveUrlFound
-    }*/
+    private fun addNeighboringServerLinksToLinkList(checkedResponseNeighboringServerLinks: ArrayList<String>) {
+        checkedResponseNeighboringServerLinks.forEach {  neighboringServerLink ->
+            if (neighboringServerUrls.find { it.url == neighboringServerLink } == null) {
+                neighboringServerUrls.add(Link(neighboringServerLink.split("/").last().toInt(), neighboringServerLink))
+                neighboringServerUrls.sortBy { it.serverId }
+            }
+        }
+    }
 
-    fun addCheckedResponse(checkedResponse: LinkCheckedResponse) {
-        responsesList.add(checkedResponse)
+    fun addInitialUrlsToLinkList(initUrlsArray: Array<String>) {
+        initUrlsArray.forEach {
+            neighboringServerUrls.add(Link(it.split("/").last().toInt(), it))
+        }
+        neighboringServerUrls.sortBy { it.serverId }
+    }
+
+    fun getNeighboringServerUrls(): ArrayList<String> {
+        isNeighboringServerUrlsChecked = true
+        val neighboringUrls = arrayListOf<String>()
+        neighboringServerUrls.forEach {
+            neighboringUrls.add(it.url)
+        }
+        return neighboringUrls
+    }
+
+    fun isNeighboringServerUrlsChecked(): Boolean {
+        return isNeighboringServerUrlsChecked
     }
 
     fun getFastestUrl(): String {
-        responsesList.sortBy { it.ping }
-        responsesList.forEach {
-            Log.d("tag22", "getFastestUrl: ${it.ping}")
-        }
+        initialResponsesList.sortBy { it.ping }
 
-        Log.d("tag22", "first, ping: ${responsesList.first().ping}")
-        Log.d("tag22", "first, id: ${responsesList.first().id}")
-
-        return if (responsesList.first().id == null) {
+        return if (initialResponsesList.first().id == null && initialResponsesList.first().ping < Constants.RESPONSE_TIME_LIMIT) {
             Constants.ALL_URLS_ARE_DEAD
         } else {
-            "${Constants.BASE_URL}${responsesList.first().region}/${responsesList.first().id}"
+            "${Constants.BASE_URL}${initialResponsesList.first().region}/${initialResponsesList.first().id}"
         }
+    }
+
+    fun clearResponsesList() {
+        initialResponsesList.clear()
     }
 
     fun clearStore() {
-        responsesList.clear()
+        initialResponsesList.clear()
+        neighboringServerUrls.clear()
         urlsToCheckQuantity = 0
-        //isFirstAliveUrlFound = false
+        isNeighboringServerUrlsChecked = false
     }
 
     fun getResponseListSize(): Int {
-        return responsesList.size
+        return initialResponsesList.size
     }
 }

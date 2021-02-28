@@ -5,7 +5,6 @@ class Constants {
     companion object {
 
         const val BASE_URL = "https://wnnzn.sse.codesandbox.io/"
-        //const val INIT_BASE_URL = "https://wnnzn.sse.codesandbox.io/us/1/hello/"
 
         //regions
         const val UA = "ua"
@@ -19,8 +18,10 @@ class Constants {
         //keys
         const val KEY_BASE_URL = "key_base_url"
 
+        //url status
+        const val ALL_URLS_ARE_DEAD = "all_urls_are_dead"
+
         //other
         const val RESPONSE_TIME_LIMIT = 30000
-        const val ALL_URLS_ARE_DEAD = "dead_urls"
     }
 }
